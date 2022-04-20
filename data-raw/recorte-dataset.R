@@ -8,4 +8,4 @@ dados_lais <- data_fco2 %>%
 
 dados_lais$tratamento  %>% unique()
 
-readr::write_rds(dados_lais,"data/dados_lais.rds")
+# readr::write_rds(dados_lais,"data/dados_lais.rds")

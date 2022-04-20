@@ -16,3 +16,5 @@ knitr::opts_chunk$set(
 *Laís de Souza Teixeira & Alan Rodrigo Panosso* 
 
 *emissão de CO~2~ do solo*
+
+teste de commit 2

@@ -15,6 +15,25 @@ knitr::opts_chunk$set(
 
 *Laís de Souza Teixeira & Alan Rodrigo Panosso* 
 
-*emissão de CO~2~ do solo*
 
-teste de commit 3
+
+
+
+```{r,message=FALSE,warning=FALSE,error=FALSE}
+## Instalando pacotes (se necessário)
+# install.packages("devtools")
+# Sys.getenv("GITHUB_PAT")
+# Sys.unsetenv("GITHUB_PAT")
+# Sys.getenv("GITHUB_PAT")
+# devtools::install_github("arpanosso/fco2r")
+
+library(tidyverse)
+library(geobr)
+library(fco2r)
+library(skimr)
+```
+
+```{r}
+skim(data_fco2)
+```
+

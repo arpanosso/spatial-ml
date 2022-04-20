@@ -34,6 +34,7 @@ library(skimr)
 ```
 
 ```{r}
-skim(data_fco2)
+data_fco2 %>% 
+  head()
 ```
 

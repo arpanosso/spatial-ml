@@ -11,7 +11,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-# spatial-ml
+# varabilidade espacial
 
 <!-- badges: start -->
 <!-- badges: end -->

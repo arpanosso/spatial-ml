@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# spatial-ml
+# varabilidade espacial
 
 <!-- badges: start -->
 <!-- badges: end -->

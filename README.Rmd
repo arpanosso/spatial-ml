@@ -16,9 +16,6 @@ knitr::opts_chunk$set(
 *Laís de Souza Teixeira & Alan Rodrigo Panosso* 
 
 
-
-
-
 ```{r,message=FALSE,warning=FALSE,error=FALSE}
 ## Instalando pacotes (se necessário)
 # install.packages("devtools")
@@ -35,6 +32,6 @@ library(skimr)
 
 ```{r}
 data_fco2 %>% 
-  head()
+  glimpse()
 ```
 

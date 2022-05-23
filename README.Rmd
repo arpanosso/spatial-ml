@@ -17,21 +17,67 @@ knitr::opts_chunk$set(
 
 
 ```{r,message=FALSE,warning=FALSE,error=FALSE}
-## Instalando pacotes (se necessário)
-# install.packages("devtools")
-# Sys.getenv("GITHUB_PAT")
-# Sys.unsetenv("GITHUB_PAT")
-# Sys.getenv("GITHUB_PAT")
-# devtools::install_github("arpanosso/fco2r")
-
+# devtools::install_github("Envirometrix/plotKML")
+# devtools::install_github("Envirometrix/landmap")
 library(tidyverse)
+library(sp)
 library(geobr)
-library(fco2r)
 library(skimr)
+library(GSIF)
+library(geoR)
+library(raster)
 ```
 
 ```{r}
-data_fco2 %>% 
-  glimpse()
+dados <- read_rds("data/dados_lais.rds")
+skim(dados)
 ```
+
+# Seguindo o exemplo de Meuse
+
+```{r}
+demo(meuse, echo=FALSE)
+data(meuse)
+```
+
+## Ajustando o modelo
+
+
+```{r}
+zinc.geo <- as.geodata(meuse[c("x","y","zinc")])
+ini.v <- c(var(log1p(zinc.geo$data)),500)
+zinc.vgm <- likfit(zinc.geo, lambda=0, ini=ini.v, cov.model=
+"exponential")
+```
+
+
+```{r}
+data("meuse.grid")
+locs <- as.geodata(meuse.grid)$coords
+zinc.ok <- krige.conv(zinc.geo, locations=locs, krige=krige.control
+(obj.m=zinc.vgm))
+```
+
+
+
+## Buffer distance
+```{r}
+grid.dist0 <- buffer.dist(meuse["zinc"], as.geodata(meuse.grid)[1], as.factor(1:nrow(meuse)))
+
+classes <- cut(meuse$om, breaks=seq(0, 17, length=8))
+grid.dist <- buffer.dist(meuse["om"], as.geodata(meuse.grid)[1], classes)
+plot(stack(grid.dist))
+```
+
+
+
+
+
+
+
+
+
+
+
+
 

@@ -6,61 +6,83 @@
 *Laís de Souza Teixeira & Alan Rodrigo Panosso*
 
 ``` r
-## Instalando pacotes (se necessário)
-# install.packages("devtools")
-# Sys.getenv("GITHUB_PAT")
-# Sys.unsetenv("GITHUB_PAT")
-# Sys.getenv("GITHUB_PAT")
-# devtools::install_github("arpanosso/fco2r")
-
 library(tidyverse)
 library(geobr)
-library(fco2r)
 library(skimr)
 ```
 
 ``` r
-data_fco2 %>% 
-  glimpse()
-#> Rows: 15,397
-#> Columns: 39
-#> $ experimento       <chr> "Espacial", "Espacial", "Espacial", "Espacial", "Esp~
-#> $ data              <date> 2001-07-10, 2001-07-10, 2001-07-10, 2001-07-10, 200~
-#> $ manejo            <chr> "convencional", "convencional", "convencional", "con~
-#> $ tratamento        <chr> "AD_GN", "AD_GN", "AD_GN", "AD_GN", "AD_GN", "AD_GN"~
-#> $ revolvimento_solo <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FAL~
-#> $ data_preparo      <date> 2001-07-01, 2001-07-01, 2001-07-01, 2001-07-01, 200~
-#> $ conversao         <date> 1970-01-01, 1970-01-01, 1970-01-01, 1970-01-01, 197~
-#> $ cobertura         <lgl> TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE~
-#> $ cultura           <chr> "milho_soja", "milho_soja", "milho_soja", "milho_soj~
-#> $ x                 <dbl> 0, 40, 80, 10, 25, 40, 55, 70, 20, 40, 60, 10, 70, 3~
-#> $ y                 <dbl> 0, 0, 0, 10, 10, 10, 10, 10, 20, 20, 20, 25, 25, 30,~
-#> $ longitude_muni    <dbl> 782062.7, 782062.7, 782062.7, 782062.7, 782062.7, 78~
-#> $ latitude_muni     <dbl> 7647674, 7647674, 7647674, 7647674, 7647674, 7647674~
-#> $ estado            <chr> "SP", "SP", "SP", "SP", "SP", "SP", "SP", "SP", "SP"~
-#> $ municipio         <chr> "Jaboticabal", "Jaboticabal", "Jaboticabal", "Jaboti~
-#> $ ID                <int> 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 1~
-#> $ prof              <chr> "0-0.1", "0-0.1", "0-0.1", "0-0.1", "0-0.1", "0-0.1"~
-#> $ FCO2              <dbl> 1.080, 0.825, 1.950, 0.534, 0.893, 0.840, 1.110, 1.8~
-#> $ Ts                <dbl> 18.73, 18.40, 19.20, 18.28, 18.35, 18.47, 19.10, 18.~
-#> $ Us                <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
-#> $ pH                <dbl> 5.1, 5.1, 5.8, 5.3, 5.5, 5.7, 5.6, 6.4, 5.3, 5.8, 5.~
-#> $ MO                <dbl> 20, 24, 25, 23, 23, 21, 26, 23, 25, 24, 26, 20, 25, ~
-#> $ P                 <dbl> 46, 26, 46, 78, 60, 46, 55, 92, 55, 60, 48, 71, 125,~
-#> $ K                 <dbl> 2.4, 2.2, 5.3, 3.6, 3.4, 2.9, 4.0, 2.3, 3.3, 3.6, 4.~
-#> $ Ca                <dbl> 25, 30, 41, 27, 33, 38, 35, 94, 29, 36, 37, 29, 50, ~
-#> $ Mg                <dbl> 11, 11, 25, 11, 15, 20, 16, 65, 11, 17, 15, 11, 30, ~
-#> $ H_Al              <dbl> 31, 31, 22, 28, 27, 22, 22, 12, 31, 28, 28, 31, 18, ~
-#> $ SB                <dbl> 38.4, 43.2, 71.3, 41.6, 50.6, 60.9, 55.0, 161.3, 43.~
-#> $ CTC               <dbl> 69.4, 74.2, 93.3, 69.6, 77.9, 82.9, 77.0, 173.3, 74.~
-#> $ V                 <dbl> 55, 58, 76, 60, 65, 73, 71, 93, 58, 67, 67, 58, 82, ~
-#> $ Ds                <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
-#> $ Macro             <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
-#> $ Micro             <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
-#> $ VTP               <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
-#> $ PLA               <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
-#> $ AT                <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
-#> $ SILTE             <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
-#> $ ARG               <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
-#> $ HLIFS             <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
+dados <- read_rds("data/dados_lais.rds")
+skim(dados)
 ```
+
+|                                                  |       |
+|:-------------------------------------------------|:------|
+| Name                                             | dados |
+| Number of rows                                   | 2304  |
+| Number of columns                                | 35    |
+| \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_   |       |
+| Column type frequency:                           |       |
+| character                                        | 7     |
+| Date                                             | 3     |
+| logical                                          | 2     |
+| numeric                                          | 23    |
+| \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ |       |
+| Group variables                                  | None  |
+
+Data summary
+
+**Variable type: character**
+
+| skim\_variable | n\_missing | complete\_rate | min | max | empty | n\_unique | whitespace |
+|:---------------|-----------:|---------------:|----:|----:|------:|----------:|-----------:|
+| experimento    |          0 |              1 |   8 |   8 |     0 |         1 |          0 |
+| manejo         |          0 |              1 |  15 |  15 |     0 |         1 |          0 |
+| tratamento     |          0 |              1 |   2 |   2 |     0 |         2 |          0 |
+| cultura        |          0 |              1 |   9 |  13 |     0 |         2 |          0 |
+| estado         |          0 |              1 |   2 |   2 |     0 |         1 |          0 |
+| municipio      |          0 |              1 |   8 |   8 |     0 |         1 |          0 |
+| prof           |          0 |              1 |   5 |   5 |     0 |         1 |          0 |
+
+**Variable type: Date**
+
+| skim\_variable | n\_missing | complete\_rate | min        | max        | median     | n\_unique |
+|:---------------|-----------:|---------------:|:-----------|:-----------|:-----------|----------:|
+| data           |          0 |              1 | 2015-10-02 | 2017-06-17 | 2017-02-09 |        21 |
+| data\_preparo  |          0 |              1 | 1986-03-01 | 1986-03-01 | 1986-03-01 |         1 |
+| conversao      |          0 |              1 | 1986-03-01 | 1986-03-01 | 1986-03-01 |         1 |
+
+**Variable type: logical**
+
+| skim\_variable     | n\_missing | complete\_rate | mean | count     |
+|:-------------------|-----------:|---------------:|-----:|:----------|
+| revolvimento\_solo |          0 |              1 |    0 | FAL: 2304 |
+| cobertura          |          0 |              1 |    1 | TRU: 2304 |
+
+**Variable type: numeric**
+
+| skim\_variable  | n\_missing | complete\_rate |       mean |    sd |         p0 |        p25 |        p50 |        p75 |       p100 | hist  |
+|:----------------|-----------:|---------------:|-----------:|------:|-----------:|-----------:|-----------:|-----------:|-----------:|:------|
+| x               |          0 |           1.00 |      53.40 | 32.52 |       0.00 |      25.00 |      52.50 |      80.00 |     120.00 | ▆▆▇▅▃ |
+| y               |          0 |           1.00 |      41.08 | 28.72 |       0.00 |      20.00 |      30.00 |      70.00 |     100.00 | ▇▆▃▃▂ |
+| longitude\_muni |          0 |           1.00 |  458447.46 |  0.00 |  458447.46 |  458447.46 |  458447.46 |  458447.46 |  458447.46 | ▁▁▇▁▁ |
+| latitude\_muni  |          0 |           1.00 | 7749821.85 |  0.00 | 7749821.85 | 7749821.85 | 7749821.85 | 7749821.85 | 7749821.85 | ▁▁▇▁▁ |
+| ID              |          0 |           1.00 |      48.81 | 28.24 |       1.00 |      24.75 |      48.50 |      72.25 |     102.00 | ▇▇▇▇▆ |
+| FCO2            |         15 |           0.99 |       4.61 |  2.25 |      -3.42 |       3.17 |       4.26 |       5.53 |      46.93 | ▇▁▁▁▁ |
+| Ts              |          2 |           1.00 |      25.53 |  2.88 |      15.00 |      23.43 |      26.59 |      27.50 |      30.90 | ▁▂▂▇▃ |
+| Us              |          2 |           1.00 |      13.63 |  8.06 |       1.96 |       8.00 |      11.00 |      19.00 |      44.00 | ▇▅▃▁▁ |
+| pH              |          0 |           1.00 |       4.29 |  2.26 |       3.50 |       3.90 |       4.10 |       4.30 |      52.00 | ▇▁▁▁▁ |
+| MO              |          0 |           1.00 |      30.59 |  5.25 |      15.00 |      27.75 |      30.00 |      34.00 |      45.00 | ▁▃▇▃▁ |
+| P               |          0 |           1.00 |       5.28 |  2.44 |       1.00 |       3.00 |       5.00 |       6.00 |      17.00 | ▇▇▂▁▁ |
+| K               |          0 |           1.00 |       1.93 |  1.28 |       0.60 |       1.10 |       1.60 |       2.20 |      11.50 | ▇▂▁▁▁ |
+| Ca              |          0 |           1.00 |      14.68 | 13.71 |       2.00 |       6.00 |       9.00 |      19.00 |      75.00 | ▇▂▁▁▁ |
+| Mg              |          0 |           1.00 |      11.80 |  5.04 |       4.00 |       8.00 |      11.00 |      15.00 |      33.00 | ▇▇▃▁▁ |
+| H\_Al           |          0 |           1.00 |      68.53 | 21.22 |       0.00 |      52.00 |      72.00 |      88.00 |     121.00 | ▁▃▇▃▂ |
+| SB              |          0 |           1.00 |      28.41 | 17.70 |       9.10 |      16.30 |      21.90 |      35.10 |     100.40 | ▇▃▁▁▁ |
+| CTC             |          0 |           1.00 |      96.94 | 17.90 |      13.60 |      87.90 |      98.50 |     107.70 |     137.60 | ▁▁▃▇▂ |
+| V               |          0 |           1.00 |      29.76 | 16.85 |       9.00 |      17.00 |      25.00 |      40.00 |     100.00 | ▇▃▂▁▁ |
+| Ds              |       1149 |           0.50 |       1.30 |  0.16 |       0.95 |       1.19 |       1.29 |       1.42 |       1.60 | ▂▅▇▆▅ |
+| Macro           |       1149 |           0.50 |       1.36 |  3.62 |       0.03 |       0.08 |       0.10 |       0.13 |      16.50 | ▇▁▁▁▁ |
+| Micro           |       1149 |           0.50 |       5.11 | 13.14 |       0.18 |       0.31 |       0.34 |       0.38 |      45.66 | ▇▁▁▁▁ |
+| VTP             |       1149 |           0.50 |      44.71 |  6.69 |      23.92 |      39.96 |      43.78 |      48.41 |      63.69 | ▁▃▇▅▁ |
+| PLA             |       1284 |           0.44 |      37.05 |  6.31 |      17.92 |      33.20 |      36.58 |      40.30 |      55.69 | ▁▃▇▃▁ |

@@ -23,7 +23,7 @@ library(tidyverse)
 library(sp)
 library(geobr)
 library(skimr)
-library(GSIF)
+# library(GSIF)
 library(geoR)
 library(raster)
 ```
@@ -62,11 +62,11 @@ zinc.ok <- krige.conv(zinc.geo, locations=locs, krige=krige.control
 
 ## Buffer distance
 ```{r}
-grid.dist0 <- buffer.dist(meuse["zinc"], as.geodata(meuse.grid)[1], as.factor(1:nrow(meuse)))
-
-classes <- cut(meuse$om, breaks=seq(0, 17, length=8))
-grid.dist <- buffer.dist(meuse["om"], as.geodata(meuse.grid)[1], classes)
-plot(stack(grid.dist))
+# grid.dist0 <- buffer.dist(meuse["zinc"], as.geodata(meuse.grid)[1], as.factor(1:nrow(meuse)))
+# 
+# classes <- cut(meuse$om, breaks=seq(0, 17, length=8))
+# grid.dist <- buffer.dist(meuse["om"], as.geodata(meuse.grid)[1], classes)
+# plot(stack(grid.dist))
 ```
 
 

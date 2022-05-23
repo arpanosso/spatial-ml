@@ -6,9 +6,15 @@
 *Laís de Souza Teixeira & Alan Rodrigo Panosso*
 
 ``` r
+# devtools::install_github("Envirometrix/plotKML")
+# devtools::install_github("Envirometrix/landmap")
 library(tidyverse)
+library(sp)
 library(geobr)
 library(skimr)
+# library(GSIF)
+library(geoR)
+library(raster)
 ```
 
 ``` r
@@ -86,3 +92,53 @@ Data summary
 | Micro           |       1149 |           0.50 |       5.11 | 13.14 |       0.18 |       0.31 |       0.34 |       0.38 |      45.66 | ▇▁▁▁▁ |
 | VTP             |       1149 |           0.50 |      44.71 |  6.69 |      23.92 |      39.96 |      43.78 |      48.41 |      63.69 | ▁▃▇▅▁ |
 | PLA             |       1284 |           0.44 |      37.05 |  6.31 |      17.92 |      33.20 |      36.58 |      40.30 |      55.69 | ▁▃▇▃▁ |
+
+# Seguindo o exemplo de Meuse
+
+``` r
+demo(meuse, echo=FALSE)
+#> Warning in showSRID(uprojargs, format = "PROJ", multiline = "NO", prefer_proj =
+#> prefer_proj): Discarded datum Amersfoort in Proj4 definition
+data(meuse)
+```
+
+## Ajustando o modelo
+
+``` r
+zinc.geo <- as.geodata(meuse[c("x","y","zinc")])
+ini.v <- c(var(log1p(zinc.geo$data)),500)
+zinc.vgm <- likfit(zinc.geo, lambda=0, ini=ini.v, cov.model=
+"exponential")
+#> kappa not used for the exponential correlation function
+#> ---------------------------------------------------------------
+#> likfit: likelihood maximisation using the function optim.
+#> likfit: Use control() to pass additional
+#>          arguments for the maximisation function.
+#>         For further details see documentation for optim.
+#> likfit: It is highly advisable to run this function several
+#>         times with different initial values for the parameters.
+#> likfit: WARNING: This step can be time demanding!
+#> ---------------------------------------------------------------
+#> likfit: end of numerical maximisation.
+```
+
+``` r
+data("meuse.grid")
+locs <- as.geodata(meuse.grid)$coords
+zinc.ok <- krige.conv(zinc.geo, locations=locs, krige=krige.control
+(obj.m=zinc.vgm))
+#> krige.conv: model with constant mean
+#> krige.conv: performing the Box-Cox data transformation
+#> krige.conv: back-transforming the predicted mean and variance
+#> krige.conv: Kriging performed using global neighbourhood
+```
+
+## Buffer distance
+
+``` r
+# grid.dist0 <- buffer.dist(meuse["zinc"], as.geodata(meuse.grid)[1], as.factor(1:nrow(meuse)))
+# 
+# classes <- cut(meuse$om, breaks=seq(0, 17, length=8))
+# grid.dist <- buffer.dist(meuse["om"], as.geodata(meuse.grid)[1], classes)
+# plot(stack(grid.dist))
+```

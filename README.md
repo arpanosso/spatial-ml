@@ -12,9 +12,10 @@ library(tidyverse)
 library(sp)
 library(geobr)
 library(skimr)
-# library(GSIF)
+library(GSIF)
 library(geoR)
 library(raster)
+library(ranger)
 ```
 
 ``` r
@@ -96,10 +97,7 @@ Data summary
 # Seguindo o exemplo de Meuse
 
 ``` r
-demo(meuse, echo=FALSE)
-#> Warning in showSRID(uprojargs, format = "PROJ", multiline = "NO", prefer_proj =
-#> prefer_proj): Discarded datum Amersfoort in Proj4 definition
-data(meuse)
+data("meuse")
 ```
 
 ## Ajustando o modelo
@@ -124,7 +122,10 @@ zinc.vgm <- likfit(zinc.geo, lambda=0, ini=ini.v, cov.model=
 
 ``` r
 data("meuse.grid")
+data("meuse")
 locs <- as.geodata(meuse.grid)$coords
+meuse.grid <- SpatialPointsDataFrame(meuse.grid[1:2],meuse.grid)
+meuse.grid <- SpatialPointsDataFrame(meuse[1:2],meuse)
 zinc.ok <- krige.conv(zinc.geo, locations=locs, krige=krige.control
 (obj.m=zinc.vgm))
 #> krige.conv: model with constant mean
@@ -135,10 +136,104 @@ zinc.ok <- krige.conv(zinc.geo, locations=locs, krige=krige.control
 
 ## Buffer distance
 
+which derives a gridded map for each observation point. The spatial
+prediction model is defined as:
+
 ``` r
-# grid.dist0 <- buffer.dist(meuse["zinc"], as.geodata(meuse.grid)[1], as.factor(1:nrow(meuse)))
-# 
-# classes <- cut(meuse$om, breaks=seq(0, 17, length=8))
-# grid.dist <- buffer.dist(meuse["om"], as.geodata(meuse.grid)[1], classes)
-# plot(stack(grid.dist))
+data("meuse.grid")
+data("meuse")
+grid.dist0 <- GSIF::buffer.dist(
+  SpatialPointsDataFrame(meuse[1:2],meuse),  
+  SpatialPixelsDataFrame(points = meuse.grid[c("x", "y")], data = meuse.grid)[1],
+  as.factor(1:nrow(meuse))
+)
 ```
+
+``` r
+dn0 <- paste(names(grid.dist0), collapse="+")
+fm0 <- as.formula(paste("zinc ~ ", dn0))
+```
+
+which means that the target variable is a function of 155 covariates.
+Next, we overlay points and covariates to create a regression matrix, so
+that we can tune and fit a ranger model, and generate predictions:
+
+``` r
+data("meuse")
+ov.zinc <- over(SpatialPointsDataFrame(meuse[1:2],meuse), grid.dist0)
+rm.zinc <- cbind(meuse["zinc"], ov.zinc)
+m.zinc <- ranger(fm0, rm.zinc, quantreg=TRUE, num.trees=150, 
+                 mtry = 98,
+                 min.node.size = 4)
+m.zinc
+#> Ranger result
+#> 
+#> Call:
+#>  ranger(fm0, rm.zinc, quantreg = TRUE, num.trees = 150, mtry = 98,      min.node.size = 4) 
+#> 
+#> Type:                             Regression 
+#> Number of trees:                  150 
+#> Sample size:                      155 
+#> Number of independent variables:  155 
+#> Mtry:                             98 
+#> Target node size:                 4 
+#> Variable importance mode:         none 
+#> Splitrule:                        variance 
+#> OOB prediction error (MSE):       63598.47 
+#> R squared (OOB):                  0.5280022
+```
+
+``` r
+zinc.rfd <- predict(m.zinc, grid.dist0@data)
+str(zinc.rfd)
+#> List of 5
+#>  $ predictions              : num [1:3103] 698 731 701 695 746 ...
+#>  $ num.trees                : num 150
+#>  $ num.independent.variables: num 155
+#>  $ num.samples              : int 3103
+#>  $ treetype                 : chr "Regression"
+#>  - attr(*, "class")= chr "ranger.prediction"
+```
+
+``` r
+meuse.grid$zinc_rfd = zinc.rfd$predictions
+meuse.grid$zinc_ok = zinc.ok$predict
+#meuse.grid$zinc_rfd_range = (zinc.rfd[,3]-zinc.rfd[,1])/2
+cor.test(zinc.rfd$predictions,zinc.ok$predict)
+#> 
+#>  Pearson's product-moment correlation
+#> 
+#> data:  zinc.rfd$predictions and zinc.ok$predict
+#> t = 178.41, df = 3101, p-value < 2.2e-16
+#> alternative hypothesis: true correlation is not equal to 0
+#> 95 percent confidence interval:
+#>  0.9513483 0.9576029
+#> sample estimates:
+#>       cor 
+#> 0.9545807
+```
+
+``` r
+as.tibble(meuse.grid) |> 
+  ggplot(aes(x=x,y=y)) +
+  geom_tile(aes(fill = zinc_ok)) +
+  ggplot2::scale_fill_gradient(low = "yellow", high = "blue") +
+  ggplot2::coord_equal()
+#> Warning: `as.tibble()` was deprecated in tibble 2.0.0.
+#> Please use `as_tibble()` instead.
+#> The signature and semantics have changed, see `?as_tibble`.
+#> This warning is displayed once every 8 hours.
+#> Call `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.
+```
+
+![](README_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+
+``` r
+as.tibble(meuse.grid) |> 
+  ggplot(aes(x=x,y=y)) +
+  geom_tile(aes(fill = zinc_rfd)) +
+  ggplot2::scale_fill_gradient(low = "yellow", high = "blue") +
+  ggplot2::coord_equal()
+```
+
+![](README_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->

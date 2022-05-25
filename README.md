@@ -124,7 +124,7 @@ zinc.vgm <- likfit(zinc.geo, lambda=0, ini=ini.v, cov.model=
 data("meuse.grid")
 data("meuse")
 locs <- as.geodata(meuse.grid)$coords
-meuse.grid <- SpatialPointsDataFrame(meuse.grid[1:2],meuse.grid)
+#meuse.grid <- SpatialPointsDataFrame(meuse.grid[1:2],meuse.grid)
 meuse.grid <- SpatialPointsDataFrame(meuse[1:2],meuse)
 zinc.ok <- krige.conv(zinc.geo, locations=locs, krige=krige.control
 (obj.m=zinc.vgm))
@@ -179,15 +179,15 @@ m.zinc
 #> Target node size:                 4 
 #> Variable importance mode:         none 
 #> Splitrule:                        variance 
-#> OOB prediction error (MSE):       63598.47 
-#> R squared (OOB):                  0.5280022
+#> OOB prediction error (MSE):       62008.41 
+#> R squared (OOB):                  0.5398029
 ```
 
 ``` r
 zinc.rfd <- predict(m.zinc, grid.dist0@data)
 str(zinc.rfd)
 #> List of 5
-#>  $ predictions              : num [1:3103] 698 731 701 695 746 ...
+#>  $ predictions              : num [1:3103] 660 684 670 660 700 ...
 #>  $ num.trees                : num 150
 #>  $ num.independent.variables: num 155
 #>  $ num.samples              : int 3103
@@ -204,13 +204,13 @@ cor.test(zinc.rfd$predictions,zinc.ok$predict)
 #>  Pearson's product-moment correlation
 #> 
 #> data:  zinc.rfd$predictions and zinc.ok$predict
-#> t = 178.41, df = 3101, p-value < 2.2e-16
+#> t = 180.63, df = 3101, p-value < 2.2e-16
 #> alternative hypothesis: true correlation is not equal to 0
 #> 95 percent confidence interval:
-#>  0.9513483 0.9576029
+#>  0.9524553 0.9585706
 #> sample estimates:
 #>       cor 
-#> 0.9545807
+#> 0.9556158
 ```
 
 ``` r

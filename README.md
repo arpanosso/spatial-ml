@@ -179,15 +179,15 @@ m.zinc
 #> Target node size:                 4 
 #> Variable importance mode:         none 
 #> Splitrule:                        variance 
-#> OOB prediction error (MSE):       62008.41 
-#> R squared (OOB):                  0.5398029
+#> OOB prediction error (MSE):       61303.15 
+#> R squared (OOB):                  0.5450371
 ```
 
 ``` r
 zinc.rfd <- predict(m.zinc, grid.dist0@data)
 str(zinc.rfd)
 #> List of 5
-#>  $ predictions              : num [1:3103] 660 684 670 660 700 ...
+#>  $ predictions              : num [1:3103] 655 691 682 655 707 ...
 #>  $ num.trees                : num 150
 #>  $ num.independent.variables: num 155
 #>  $ num.samples              : int 3103
@@ -204,13 +204,13 @@ cor.test(zinc.rfd$predictions,zinc.ok$predict)
 #>  Pearson's product-moment correlation
 #> 
 #> data:  zinc.rfd$predictions and zinc.ok$predict
-#> t = 180.63, df = 3101, p-value < 2.2e-16
+#> t = 168.96, df = 3101, p-value < 2.2e-16
 #> alternative hypothesis: true correlation is not equal to 0
 #> 95 percent confidence interval:
-#>  0.9524553 0.9585706
+#>  0.9461815 0.9530844
 #> sample estimates:
 #>       cor 
-#> 0.9556158
+#> 0.9497483
 ```
 
 ``` r

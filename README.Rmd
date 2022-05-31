@@ -126,3 +126,4 @@ as.tibble(meuse.grid) |>
   ggplot2::coord_equal()
 ```
 
+

@@ -23,10 +23,10 @@ library(tidyverse)
 library(sp)
 library(geobr)
 library(skimr)
-library(GSIF)
 library(geoR)
 library(raster)
 library(ranger)
+library(GSIF)
 ```
 
 ```{r}

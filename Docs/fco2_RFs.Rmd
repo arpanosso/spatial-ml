@@ -37,7 +37,7 @@ skim(dados)
 # Dados
 
 ```{r}
-da <- dados |> filter(data == "2015-10-02") |> 
+da <- dados |> filter(data == "2017-02-09") |> 
   mutate(FCO2 = ifelse(FCO2 <0, mean(FCO2),FCO2) ) |> 
   dplyr::select(x,y,FCO2)
 ```
@@ -115,7 +115,7 @@ which means that the target variable is a function of 155 covariates. Next, we o
 ov.fco2 <- over(SpatialPointsDataFrame(da[1:2],da), grid.dist0)
 rm.fco2 <- cbind(da["FCO2"], ov.fco2)
 m.fco2 <- ranger(fm0, rm.fco2, quantreg=TRUE, num.trees=1500, 
-                 mtry = 100,
+                 mtry = 10,
                  min.node.size = 5)
 m.fco2
 ```
@@ -139,7 +139,7 @@ cor.test(da.grid$FCO2_rfd,da.grid$FCO2_ok2)
 ```{r}
 as.tibble(da.grid) |> 
   ggplot(aes(x=x,y=y)) +
-  geom_tile(aes(fill = FCO2_ok2)) +
+  geom_tile(aes(fill = FCO2_ok)) +
   ggplot2::scale_fill_gradient(low = "yellow", high = "blue") +
   ggplot2::coord_equal()
 ```

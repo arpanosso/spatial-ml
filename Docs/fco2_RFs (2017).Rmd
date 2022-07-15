@@ -1,0 +1,346 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Autocorrelação Espacial e Aprendizado de máquina
+
+*Laís de Souza Teixeira & Alan Rodrigo Panosso* 
+
+
+```{r,message=FALSE,warning=FALSE,error=FALSE}
+# devtools::install_github("Envirometrix/plotKML")
+# devtools::install_github("Envirometrix/landmap")
+library(tidyverse)
+library(sp)
+library(geobr)
+library(skimr)
+library(geoR)
+library(raster)
+library(ranger)
+library(GSIF)
+library(patchwork)
+```
+
+### definindo a função para estatística descritiva
+```{r}
+estat_desc <- function(x){
+  x <- na.omit(x); n <- length(x)
+  m <- mean(x); md <- median(x)
+  dp<- sd(x); cv <- 100*dp/m
+  menor <- min(x)
+  maior <- max(x)
+  q1 <- quantile(x,.25)
+  q3 <- quantile(x,.75)
+  ass <- agricolae::skewness(x)
+  curt <- agricolae::kurtosis(x)
+  
+  c(N = round(n), 
+    Média = m, 
+    Mediana = md,
+    Desv_Pad = round(dp,4),
+    CV = cv,
+    Minimo = menor,
+    Q1 = q1,
+    Q3 = q3,
+    Maximo = maior,
+    Assimetria = ass,
+    Curtose = curt
+    )
+}
+```
+
+## Função pra fazer o qqplot utilizando o ggplot2
+
+```{r}
+gg_qq_empirical <- function(a, b, quantiles = seq(0, 1, 0.01))
+{
+  a_lab <- deparse(substitute(a))
+  if(missing(b)) {
+    b <- rnorm(length(a), mean(a), sd(a))
+    b_lab <- "normal distribution"
+  }
+  else b_lab <- deparse(substitute(b))
+  
+  ggplot(mapping = aes(x = quantile(a, quantiles), 
+                       y = quantile(b, quantiles))) + 
+    geom_point() +
+    geom_abline(aes(slope = 1, intercept = 0), linetype = 2) +
+    labs(x = paste("quantis de", deparse(substitute(a))), 
+         y = paste("quantis de", deparse(substitute(b)))#,
+         #title = paste(a_lab, "vs.", b_lab)
+         )+
+    xlim(0,max(a,b))+ylim(0,max(a,b))
+}
+FCO2 <- da.grid.filtrado$FCO2
+FCO2_rfd <- da.grid.filtrado$FCO2_rfd
+FCO2_ok <- da.grid.filtrado$FCO2_ok
+FCO2_ok2 <- da.grid.filtrado$FCO2_ok2
+```
+
+
+# Entrada de dados
+```{r}
+dados <- read_rds("../data/dados_lais.rds")
+```
+
+# Dados
+
+```{r}
+data_input <- "2015-10-02"
+dados %>% pull(data) %>% unique()
+da <- dados %>%  filter(data == data_input) %>%  
+  mutate(FCO2 = ifelse(FCO2 <0, mean(FCO2),FCO2) ) %>%  
+  dplyr::select(x,y,FCO2)
+```
+
+## Ajustando o modelo
+
+
+```{r}
+da$FCO2[is.na(da$FCO2)] <- mean(da$FCO2,na.rm=TRUE)
+da$FCO2[da$FCO2>=15] <- mean(da$FCO2,na.rm=TRUE)
+fco2.geo <- as.geodata(da[c("x","y","FCO2")])
+ini.v <- c(var(log1p(fco2.geo$data)),500)
+fco2.vgm <- likfit(fco2.geo, lambda=0, ini=ini.v, cov.model=
+"exponential")
+######
+fco2_aux <- da[c("x","y","FCO2")]
+sp::coordinates(fco2_aux)=~x+y  
+form_fco2<-FCO2~1
+vari_beta <- gstat::variogram(form_fco2, data=fco2_aux)
+m_beta <- gstat::fit.variogram(vari_beta,fit.method = 7,
+                               gstat::vgm(1, "Sph", 8, 1))
+```
+
+
+```{r}
+dis <- 1 #resolução da malha
+da.grid <- expand.grid(x=seq(min(da$x),max(da$x),dis), y=seq(min(da$y),max(da$y),dis))
+da.grid$part.a<-0
+locs <- as.geodata(da.grid)$coords
+da.grid <- SpatialPointsDataFrame(da[1:2],da)
+fco2.ok <- krige.conv(fco2.geo, locations=locs, krige=krige.control
+(obj.m=fco2.vgm))
+
+
+x<-fco2_aux$x
+y<-fco2_aux$y
+dis <-1 #Distância entre pontos
+grid <- expand.grid(X=seq(min(x),max(x),dis), Y=seq(min(y),max(y),dis))
+sp::gridded(grid) = ~ X + Y
+ko_beta<-gstat::krige(formula=form_fco2, fco2_aux, grid, model=m_beta, 
+    block=c(1,1),
+    nsim=0,
+    na.action=na.pass,
+    debug.level=-1,  
+    )
+fco2.ok2<-ko_beta$var1.pred
+```
+
+
+
+## Buffer distance
+which derives a gridded map for each observation point. The spatial prediction model is defined as:
+
+```{r}
+dis <- 1 #resolução da malha = a dis anterior
+da.grid <- expand.grid(x=seq(min(da$x),max(da$x),dis), y=seq(min(da$y),max(da$y),dis))
+da.grid$part.a<-0
+grid.dist0 <- GSIF::buffer.dist(
+  SpatialPointsDataFrame(da[1:2],da),  
+  SpatialPixelsDataFrame(points = da.grid[c("x", "y")], data = da.grid)[1],
+  as.factor(1:nrow(da))
+)
+```
+
+
+```{r}
+dn0 <- paste(names(grid.dist0), collapse="+")
+fm0 <- as.formula(paste("FCO2 ~ ", dn0)) #se mudar a viariavél, tem que mudar aqui tbm
+```
+
+
+which means that the target variable is a function of 155 covariates. Next, we overlay points and covariates to create a regression matrix, so that we can tune and fit a ranger model, and generate predictions:
+
+```{r}
+ov.fco2 <- over(SpatialPointsDataFrame(da[1:2],da), grid.dist0)
+rm.fco2 <- cbind(da["FCO2"], ov.fco2)
+m.fco2 <- ranger(fm0, rm.fco2, quantreg=TRUE, num.trees=1500, 
+                 mtry = 50,
+                 min.node.size = 5)
+m.fco2
+```
+
+
+```{r}
+fco2.rfd <- predict(m.fco2, grid.dist0@data)
+#str(fco2.rfd) #Prediçao dos dados RF
+```
+
+
+```{r}
+da.grid$FCO2_rfd = fco2.rfd$predictions
+da.grid$FCO2_ok = fco2.ok$predict
+da.grid$FCO2_ok2 = fco2.ok2 
+#meuse.grid$zinc_rfd_range = (zinc.rfd[,3]-zinc.rfd[,1])/2
+cor.test(da.grid$FCO2_rfd,da.grid$FCO2_ok) 
+cor.test(da.grid$FCO2_rfd,da.grid$FCO2_ok2) 
+# rodar 2017 sempre no Ok2 / utilizar o maior cor
+```
+
+```{r}
+as.tibble(da.grid) %>%  
+  ggplot(aes(x=x,y=y)) +
+  geom_tile(aes(fill = FCO2_ok2)) +
+  ggplot2::scale_fill_gradient(low = "yellow", high = "blue") +
+  ggplot2::coord_equal()
+```
+
+
+```{r}
+as.tibble(da.grid) %>% 
+  ggplot(aes(x=x,y=y)) +
+  geom_tile(aes(fill = FCO2_rfd)) +
+  ggplot2::scale_fill_gradient(low = "yellow", high = "blue") +
+  ggplot2::coord_equal()
+```
+
+
+
+
+
+# Estatísticas descitivas para gerar a primeira tabela
+
+```{r}
+da.grid$FCO2 <- c(da$FCO2,rep(NA, nrow(da.grid) -nrow(da) ))
+d_aux <- da.grid[,c(7,4:6)]
+aux <- apply(d_aux,2,estat_desc)
+tab_est_desc<-data.frame(estatistica = rownames(aux),Data = data_input,aux)
+writexl::write_xlsx(tab_est_desc,paste0("EstDesc_",data_input,".xlsx"))
+```
+
+# QQ plot para comparar com o original
+
+```{r}
+lista_coord <-paste0(da$x,"-",da$y)
+da.grid.filtrado <- da.grid %>% 
+  mutate(coord = paste0(x,"-",y)) %>% 
+  dplyr::filter(coord %in% lista_coord)
+
+if(sum(!da.grid.filtrado$x == da$x)+
+   sum(!da.grid.filtrado$y == da$y) == 0){
+  da.grid.filtrado$FCO2 <- da$FCO2
+}else{
+  da.grid.filtrado <- da.grid.filtrado %>% 
+    dplyr::arrange(x,y)
+  da <- da %>% 
+    dplyr::arrange(x,y)
+  if(sum(!da.grid.filtrado$x == da$x)+
+     sum(!da.grid.filtrado$y == da$y) == 0){
+    da.grid.filtrado$FCO2 <- da$FCO2}
+}
+```
+
+```{r}
+cor(da.grid.filtrado[,4:7])
+```
+
+
+
+
+
+```{r}
+qq <- gg_qq_empirical(FCO2_rfd, FCO2)
+qq <- qq + theme_light() + coord_equal()
+
+hists <- da.grid.filtrado %>% 
+  ggplot(aes(x=FCO2, y= ..density..)) +
+  geom_histogram(bins=20,color="black",alpha=.0) +
+  geom_histogram(aes(x=FCO2_rfd),color="red",alpha=.0,bins=20)+
+  theme_classic()
+
+
+hists1 <- da.grid.filtrado %>% 
+  ggplot(aes(x=FCO2, y= ..density..)) +
+  geom_histogram(bins=20,color="white",alpha=.0) +
+  geom_histogram(aes(x=FCO2_rfd),color="red",alpha=.0,bins=20)+
+  theme_classic()+
+  labs(x="FCO2_rfd", y="densidade de freqência")
+
+
+hists2 <- da.grid.filtrado %>% 
+  ggplot(aes(x=FCO2_rfd, y= ..density..)) +
+  geom_histogram(bins=20,color="white",alpha=.0) +
+  geom_histogram(aes(x=FCO2),color="black",alpha=.0,bins=20)+
+  theme_classic()+
+  labs(x="FCO2", y="densidade de freqência")
+
+qq | (hists1/hists2)
+```
+
+```{r}
+qq <- gg_qq_empirical(FCO2_ok, FCO2)
+qq <- qq + theme_light() + coord_equal() 
+
+hists <- da.grid.filtrado %>% 
+  ggplot(aes(x=FCO2, y= ..density..)) +
+  geom_histogram(bins=20,color="black",alpha=.0) +
+  geom_histogram(aes(x=FCO2_ok),color="red",alpha=.0,bins=20)+
+  theme_classic()
+
+
+hists1 <- da.grid.filtrado %>% 
+  ggplot(aes(x=FCO2, y= ..density..)) +
+  geom_histogram(bins=20,color="white",alpha=.0) +
+  geom_histogram(aes(x=FCO2_ok),color="red",alpha=.0,bins=20)+
+  theme_classic()+
+  labs(x="FCO2_ok", y="densidade de freqência")
+
+
+hists2 <- da.grid.filtrado %>% 
+  ggplot(aes(x=FCO2_ok, y= ..density..)) +
+  geom_histogram(bins=20,color="white",alpha=.0) +
+  geom_histogram(aes(x=FCO2),color="black",alpha=.0,bins=20)+
+  theme_classic()+
+  labs(x="FCO2", y="densidade de freqência")
+
+qq | (hists1/hists2)
+```
+
+```{r}
+qq <- gg_qq_empirical(FCO2_ok2, FCO2)
+qq <- qq + theme_light() + coord_equal() 
+
+hists <- da.grid.filtrado %>% 
+  ggplot(aes(x=FCO2, y= ..density..)) +
+  geom_histogram(bins=20,color="black",alpha=.0) +
+  geom_histogram(aes(x=FCO2_ok2),color="red",alpha=.0,bins=20)+
+  theme_classic()
+
+
+hists1 <- da.grid.filtrado %>% 
+  ggplot(aes(x=FCO2, y= ..density..)) +
+  geom_histogram(bins=20,color="white",alpha=.0) +
+  geom_histogram(aes(x=FCO2_ok2),color="red",alpha=.0,bins=20)+
+  theme_classic()+
+  labs(x="FCO2_ok2", y="densidade de freqência")
+
+
+hists2 <- da.grid.filtrado %>% 
+  ggplot(aes(x=FCO2_ok2, y= ..density..)) +
+  geom_histogram(bins=20,color="white",alpha=.0) +
+  geom_histogram(aes(x=FCO2),color="black",alpha=.0,bins=20)+
+  theme_classic()+
+  labs(x="FCO2", y="densidade de freqência")
+
+qq | (hists1/hists2)
+```

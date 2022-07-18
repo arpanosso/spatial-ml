@@ -80,11 +80,20 @@ gg_qq_empirical <- function(a, b, quantiles = seq(0, 1, 0.01))
          )+
     xlim(0,max(a,b))+ylim(0,max(a,b))
 }
-FCO2 <- da.grid.filtrado$FCO2
-FCO2_rfd <- da.grid.filtrado$FCO2_rfd
-FCO2_ok <- da.grid.filtrado$FCO2_ok
-FCO2_ok2 <- da.grid.filtrado$FCO2_ok2
 ```
+
+# Função para pegar o R² do semivariograma
+
+```{r}
+r2findWLS <-function(fit, vario){ 
+        SSErr<-attr(fit,"SSErr") 
+        weig<-vario$np/vario$dist^2   
+        SStot<- SStot <- sum((weig*(vario$gamma-mean(vario$gamma)))^2) 
+        R2<-1-SSErr/SStot 
+       return(R2) 
+}
+```
+
 
 
 # Entrada de dados
@@ -95,30 +104,85 @@ dados <- read_rds("../data/dados_lais.rds")
 # Dados
 
 ```{r}
-data_input <- "2015-10-02"
 dados %>% pull(data) %>% unique()
-da <- dados %>%  filter(data == data_input) %>%  
-  mutate(FCO2 = ifelse(FCO2 <0, mean(FCO2),FCO2) ) %>%  
+```
+```{r}
+data_input <- "2017-03-15"
+dados %>%  filter(data == data_input) %>% pull(tratamento) %>% unique()
+```
+
+
+```{r}
+da <- dados %>%  filter(data == data_input, tratamento == "EU") %>%  
+  mutate(FCO2 = ifelse(FCO2 < 0, mean(FCO2),FCO2) ) %>%  
   dplyr::select(x,y,FCO2)
 ```
 
 ## Ajustando o modelo
-
 
 ```{r}
 da$FCO2[is.na(da$FCO2)] <- mean(da$FCO2,na.rm=TRUE)
 da$FCO2[da$FCO2>=15] <- mean(da$FCO2,na.rm=TRUE)
 fco2.geo <- as.geodata(da[c("x","y","FCO2")])
 ini.v <- c(var(log1p(fco2.geo$data)),500)
-fco2.vgm <- likfit(fco2.geo, lambda=0, ini=ini.v, cov.model=
+fco2.vgm <- likfit(fco2.geo, lambda=TRUE, ini=ini.v, cov.model=
 "exponential")
+
+##### cross-validation - http://www.leg.ufpr.br/geor/geoRdoc/geoRintro.html
+# bin1 <- variog(fco2.geo)
+# plot(bin1)
+# lines.variomodel(cov.model = "exp", cov.pars = c(1.2,20), nugget = 1, max.dist = 120,  lwd = 3)
+# 
+# ols.n <- variofit(bin1, ini = c(1,10), nugget=0.5, weights="equal")
+# 
+# plot(bin1, main = expression(paste("estimated  ", tau^2)))
+# lines(ols.n, lty = 2, max.dist = 120)
+# wls <- variofit(bin1, ini = c(1,0.5), fix.nugget = T)
+# xv.ml <- xvalid(fco2.geo, model=wls, variog.obj=bin1)
+# smooth <- variog(s100, option = "smooth", max.dist = 1, n.points = 100, kernel = "normal", band = 0.2)
+# lines(smooth, type ="l", lty = 2)
+# legend(0.4, 0.3, c("empirical", "exponential model", "smoothed"), lty = c(1,1,2), lwd = c(1,3,1))
+
+```
+
+
+```{r}
 ######
 fco2_aux <- da[c("x","y","FCO2")]
 sp::coordinates(fco2_aux)=~x+y  
 form_fco2<-FCO2~1
-vari_beta <- gstat::variogram(form_fco2, data=fco2_aux)
+vari_beta <- gstat::variogram(form_fco2, data=fco2_aux,cutoff=80,width=8,cressie=FALSE)
+plot(vari_beta)
+
+v.f1<-gstat::variogram(form_fco2,data=fco2_aux,cutoff=80,width=8,cloud=T)
+# x11()
+# plot(v.f1$dist,v.f1$gamma)
+# identify(v.f1$dist,v.f1$gamma)
+# v.f1[c(3544,3615,3532,3687,3533,3760,3534,3535,3530,3982),]
+#da$FCO2[91] <- 1/3*da$FCO2[90] + 1/3*da$FCO2[92] +1/3*da$FCO2[89]
+
+```
+
+
+```{r}
+# psill = NA, model, range = NA, nugget
 m_beta <- gstat::fit.variogram(vari_beta,fit.method = 7,
-                               gstat::vgm(1, "Sph", 8, 1))
+                               gstat::vgm(5, "Sph", 20, 1))
+
+sigma<-var(da$FCO2)
+sqr.f1<-round(attr(m_beta, "SSErr"),4); c0<-round(m_beta$psill[[1]],4); c0_c1<-round(sum(m_beta$psill),4);a<-round(m_beta$range[[2]],2)
+r2<-round(r2findWLS(m_beta,vari_beta),3)
+plot(vari_beta,model=m_beta, col=1,pl=F,pch=16,cex=1.2,cex.main=7,ylab=list("Semivariância",cex=1.3),
+,xlab=list("Distância de Separação h (m)",cex=1.3),main =paste("Esf(C0= ",c0,"; C0+C1= ", c0_c1, "; a= ", a,"; SQR = ", sqr.f1,"; r2 = ", r2,")",sep=""),
+sub = data_input)
+
+
+
+preds = gstat::variogramLine(m_beta, maxdist = max(vari_beta$dist))
+vari_beta %>% 
+  ggplot(aes(dist, gamma)) +
+  geom_point() +
+  geom_line(data = preds)
 ```
 
 
@@ -215,7 +279,16 @@ as.tibble(da.grid) %>%
 ```
 
 
+## Novo ok (ordinaty kriging)
 
+```{r}
+da.grid_ok <- da[1:2]*1.005
+da.grid_ok$part.a<-0
+locs <- as.geodata(da.grid_ok)$coords
+da.grid_ok <- SpatialPointsDataFrame(da[1:2],da)
+fco2.ok_ok <- krige.conv(fco2.geo, locations=locs, krige=krige.control
+(obj.m=fco2.vgm))
+```
 
 
 # Estatísticas descitivas para gerar a primeira tabela
@@ -250,17 +323,27 @@ if(sum(!da.grid.filtrado$x == da$x)+
 }
 ```
 
+# adicionando o okcom 1/2% no grid
 ```{r}
+obj <- da.grid_ok %>% data.frame() 
+obj$FCO2_ok <- fco2.ok_ok$predict
+obj <- obj %>% 
+  arrange(x,y)
+da.grid.filtrado$FCO2_ok <- obj$FCO2_ok
 cor(da.grid.filtrado[,4:7])
 ```
 
-
-
-
+## FCO2 vs FCO2_RFd
 
 ```{r}
+FCO2 <- da.grid.filtrado$FCO2
+FCO2_rfd <- da.grid.filtrado$FCO2_rfd
+FCO2_ok <- da.grid.filtrado$FCO2_ok
+FCO2_ok2 <- da.grid.filtrado$FCO2_ok2
+
 qq <- gg_qq_empirical(FCO2_rfd, FCO2)
-qq <- qq + theme_light() + coord_equal()
+qq <- qq + theme_light() + coord_equal()+
+  labs(title = data_input)
 
 hists <- da.grid.filtrado %>% 
   ggplot(aes(x=FCO2, y= ..density..)) +
@@ -289,7 +372,8 @@ qq | (hists1/hists2)
 
 ```{r}
 qq <- gg_qq_empirical(FCO2_ok, FCO2)
-qq <- qq + theme_light() + coord_equal() 
+qq <- qq + theme_light() + coord_equal() +
+  labs(title = data_input)
 
 hists <- da.grid.filtrado %>% 
   ggplot(aes(x=FCO2, y= ..density..)) +
@@ -318,7 +402,8 @@ qq | (hists1/hists2)
 
 ```{r}
 qq <- gg_qq_empirical(FCO2_ok2, FCO2)
-qq <- qq + theme_light() + coord_equal() 
+qq <- qq + theme_light() + coord_equal() +
+  labs(title = data_input)
 
 hists <- da.grid.filtrado %>% 
   ggplot(aes(x=FCO2, y= ..density..)) +

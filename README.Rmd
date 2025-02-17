@@ -19,14 +19,16 @@ knitr::opts_chunk$set(
 ```{r,message=FALSE,warning=FALSE,error=FALSE}
 # devtools::install_github("Envirometrix/plotKML")
 # devtools::install_github("Envirometrix/landmap")
+# devtools::install_github("cran/GSIF")
+# devtools::install_github("cran/rgdal")
 library(tidyverse)
 library(sp)
 library(geobr)
 library(skimr)
-library(GSIF)
 library(geoR)
 library(raster)
 library(ranger)
+library(GSIF)
 ```
 
 ```{r}

@@ -74,8 +74,8 @@ gg_qq_empirical <- function(a, b, quantiles = seq(0, 1, 0.01))
                        y = quantile(b, quantiles))) + 
     geom_point() +
     geom_abline(aes(slope = 1, intercept = 0), linetype = 2) +
-    labs(x = paste("quantis de", deparse(substitute(a))), 
-         y = paste("quantis de", deparse(substitute(b)))#,
+    labs(x = paste("Quantile of", deparse(substitute(a))), 
+         y = paste("Quantile of", deparse(substitute(b)))#,
          #title = paste(a_lab, "vs.", b_lab)
          )+
     xlim(0,max(a,b))+ylim(0,max(a,b))
@@ -98,7 +98,10 @@ r2findWLS <-function(fit, vario){
 
 # Entrada de dados
 ```{r}
-dados <- read_rds("../data/dados_lais.rds")
+dados <- read_rds("../data/dados_lais.rds") |> 
+  filter(
+    data > "2015-12-31"
+  )
 ```
 
 # Dados
@@ -107,13 +110,13 @@ dados <- read_rds("../data/dados_lais.rds")
 dados %>% pull(data) %>% unique()
 ```
 ```{r}
-data_input <- "2017-03-15"
+data_input <- "2017-02-03"
 dados %>%  filter(data == data_input) %>% pull(tratamento) %>% unique()
 ```
 
 
 ```{r}
-da <- dados %>%  filter(data == data_input, tratamento == "EU") %>%  
+da <- dados %>%  filter(data == data_input, tratamento == "SI") %>%  
   mutate(FCO2 = ifelse(FCO2 < 0, mean(FCO2),FCO2) ) %>%  
   dplyr::select(x,y,FCO2)
 ```
@@ -151,7 +154,7 @@ fco2.vgm <- likfit(fco2.geo, lambda=TRUE, ini=ini.v, cov.model=
 fco2_aux <- da[c("x","y","FCO2")]
 sp::coordinates(fco2_aux)=~x+y  
 form_fco2<-FCO2~1
-vari_beta <- gstat::variogram(form_fco2, data=fco2_aux,cutoff=80,width=8,cressie=FALSE)
+vari_beta <- gstat::variogram(form_fco2, data=fco2_aux,cutoff=1000,width=25,cressie=FALSE)
 plot(vari_beta)
 
 v.f1<-gstat::variogram(form_fco2,data=fco2_aux,cutoff=80,width=8,cloud=T)
@@ -167,7 +170,7 @@ v.f1<-gstat::variogram(form_fco2,data=fco2_aux,cutoff=80,width=8,cloud=T)
 ```{r}
 # psill = NA, model, range = NA, nugget
 m_beta <- gstat::fit.variogram(vari_beta,fit.method = 7,
-                               gstat::vgm(5, "Sph", 20, 1))
+                               gstat::vgm(4.5, "Sph", 20, 0.1))
 
 sigma<-var(da$FCO2)
 sqr.f1<-round(attr(m_beta, "SSErr"),4); c0<-round(m_beta$psill[[1]],4); c0_c1<-round(sum(m_beta$psill),4);a<-round(m_beta$range[[2]],2)
@@ -233,13 +236,13 @@ fm0 <- as.formula(paste("FCO2 ~ ", dn0)) #se mudar a viariavél, tem que mudar a
 ```
 
 
-which means that the target variable is a function of 155 covariates. Next, we overlay points and covariates to create a regression matrix, so that we can tune and fit a ranger model, and generate predictions:
+which means that the target variable is a function of p covariates. Next, we overlay points and covariates to create a regression matrix, so that we can tune and fit a ranger model, and generate predictions:
 
 ```{r}
 ov.fco2 <- over(SpatialPointsDataFrame(da[1:2],da), grid.dist0)
 rm.fco2 <- cbind(da["FCO2"], ov.fco2)
 m.fco2 <- ranger(fm0, rm.fco2, quantreg=TRUE, num.trees=1500, 
-                 mtry = 50,
+                 mtry = 10,
                  min.node.size = 5)
 m.fco2
 ```
@@ -341,9 +344,10 @@ FCO2_rfd <- da.grid.filtrado$FCO2_rfd
 FCO2_ok <- da.grid.filtrado$FCO2_ok
 FCO2_ok2 <- da.grid.filtrado$FCO2_ok2
 
-qq <- gg_qq_empirical(FCO2_rfd, FCO2)
+qq <- gg_qq_empirical(FCO2_ok2,FCO2_rfd)
 qq <- qq + theme_light() + coord_equal()+
-  labs(title = data_input)
+  labs(title = data_input,
+       x="OK",y="RFsp")
 
 hists <- da.grid.filtrado %>% 
   ggplot(aes(x=FCO2, y= ..density..)) +
@@ -353,19 +357,19 @@ hists <- da.grid.filtrado %>%
 
 
 hists1 <- da.grid.filtrado %>% 
-  ggplot(aes(x=FCO2, y= ..density..)) +
-  geom_histogram(bins=20,color="white",alpha=.0) +
-  geom_histogram(aes(x=FCO2_rfd),color="red",alpha=.0,bins=20)+
+  ggplot(aes(x=FCO2_ok2, y= ..density..)) +
+  geom_histogram(bins=20,color="red",alpha=.0) +
+  # geom_histogram(aes(x=FCO2_rfd),color="red",alpha=.0,bins=20)+
   theme_classic()+
-  labs(x="FCO2_rfd", y="densidade de freqência")
+  labs(x="FCO2-OK", y="Density")
 
 
 hists2 <- da.grid.filtrado %>% 
   ggplot(aes(x=FCO2_rfd, y= ..density..)) +
-  geom_histogram(bins=20,color="white",alpha=.0) +
-  geom_histogram(aes(x=FCO2),color="black",alpha=.0,bins=20)+
+  geom_histogram(bins=20,color="black",alpha=.0) +
+  #geom_histogram(aes(x=FCO2),color="black",alpha=.0,bins=20)+
   theme_classic()+
-  labs(x="FCO2", y="densidade de freqência")
+  labs(x="FCO2-RFsp", y="Density")
 
 qq | (hists1/hists2)
 ```
